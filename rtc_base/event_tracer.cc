@@ -230,8 +230,13 @@ class EventLogger final {
     // Copied from webrtc/rtc_base/trace_event.h TraceValueUnion.
     union TraceArgValue {
       bool as_bool;
+#if defined(__CHERI_PURE_CAPABILITY__)
+      uintptr_t as_uint;
+      intptr_t as_int;
+#else // defined(__CHERI_PURE_CAPABILITY__)
       unsigned long long as_uint;
       long long as_int;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
       double as_double;
       const void* as_pointer;
       const char* as_string;
@@ -239,9 +244,15 @@ class EventLogger final {
 
     // Assert that the size of the union is equal to the size of the as_uint
     // field since we are assigning to arbitrary types using it.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    static_assert(sizeof(TraceArgValue) == sizeof(uintptr_t),
+#else // defined(__CHERI_PURE_CAPABILITY__)
     static_assert(sizeof(TraceArgValue) == sizeof(unsigned long long),
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                   "Size of TraceArg value union is not equal to the size of "
                   "the uint field of that union.");
+    // Assert that the size of the union is equal to the size of the as_uint
+    // field since we are assigning to arbitrary types using it.
   };
 
   struct TraceEvent {
@@ -288,11 +299,19 @@ class EventLogger final {
           break;
         case TRACE_VALUE_TYPE_UINT:
           print_length = snprintf(&output[0], kTraceArgBufferLength, "%llu",
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                  (unsigned long long) arg.value.as_uint);
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                   arg.value.as_uint);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
           break;
         case TRACE_VALUE_TYPE_INT:
           print_length = snprintf(&output[0], kTraceArgBufferLength, "%lld",
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                  (long long) arg.value.as_int);
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                   arg.value.as_int);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
           break;
         case TRACE_VALUE_TYPE_DOUBLE:
           print_length = snprintf(&output[0], kTraceArgBufferLength, "%f",
