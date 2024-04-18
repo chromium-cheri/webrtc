@@ -302,7 +302,11 @@ class _opaque_connection {
 #if defined(_MSC_VER) && !defined(__clang__)
   unsigned char pmethod[24];
 #else
+#if defined(__CHERI_PURE_CAPABILITY__)
+  unsigned char pmethod[32];
+#else // defined(__CHERI_PURE_CAPABILITY__)
   unsigned char pmethod[16];
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 #endif
 
  public:
