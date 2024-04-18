@@ -294,8 +294,13 @@ void SincResampler::Resample(size_t frames, float* destination) {
 
       // Ensure `k1`, `k2` are 32-byte aligned for SIMD usage.  Should always be
       // true so long as kKernelSize is a multiple of 32.
+#if defined(__CHERI_PURE_CAPABILITY__)
+      RTC_DCHECK_EQ(0, reinterpret_cast<uint64_t>(k1) % 32);
+      RTC_DCHECK_EQ(0, reinterpret_cast<uint64_t>(k2) % 32);
+#else // defined(__CHERI_PURE_CAPABILITY__)
       RTC_DCHECK_EQ(0, reinterpret_cast<uintptr_t>(k1) % 32);
       RTC_DCHECK_EQ(0, reinterpret_cast<uintptr_t>(k2) % 32);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
 
       // Initialize input pointer based on quantized `virtual_source_idx_`.
       const float* const input_ptr = r1_ + source_idx;
