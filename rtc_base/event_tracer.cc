@@ -66,7 +66,11 @@ void EventTracer::AddTraceEvent(char phase,
                                 int num_args,
                                 const char** arg_names,
                                 const unsigned char* arg_types,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                const uintptr_t* arg_values,
+#else   // !__CHERI_PURE_CAPABILITY__
                                 const unsigned long long* arg_values,
+#endif  // !__CHERI_PURE_CAPABILITY__
                                 unsigned char flags) {
   if (g_add_trace_event_ptr) {
     g_add_trace_event_ptr(phase, category_enabled, name, id, num_args,
@@ -94,7 +98,11 @@ class EventLogger final {
                      int num_args,
                      const char** arg_names,
                      const unsigned char* arg_types,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                     const uintptr_t* arg_values,
+#else   // !__CHERI_PURE_CAPABILITY__
                      const unsigned long long* arg_values,
+#endif  // !__CHERI_PURE_CAPABILITY__
                      uint64_t timestamp,
                      int pid,
                      rtc::PlatformThreadId thread_id) {
@@ -103,7 +111,11 @@ class EventLogger final {
       TraceArg& arg = args[i];
       arg.name = arg_names[i];
       arg.type = arg_types[i];
+#if defined(__CHERI_PURE_CAPABILITY__)
+      arg.value.as_uintptr = arg_values[i];
+#else   // !__CHERI_PURE_CAPABILITY__
       arg.value.as_uint = arg_values[i];
+#endif  // !__CHERI_PURE_CAPABILITY__
 
       // Value is a pointer to a temporary string, so we have to make a copy.
       if (arg.type == TRACE_VALUE_TYPE_COPY_STRING) {
@@ -235,13 +247,23 @@ class EventLogger final {
       double as_double;
       const void* as_pointer;
       const char* as_string;
+#if defined(__CHERI_PURE_CAPABILITY__)
+      intptr_t as_intptr;
+      uintptr_t as_uintptr;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     } value;
 
     // Assert that the size of the union is equal to the size of the as_uint
     // field since we are assigning to arbitrary types using it.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    static_assert(sizeof(TraceArgValue) == sizeof(uintptr_t),
+#else // defined(__CHERI_PURE_CAPABILITY__)
     static_assert(sizeof(TraceArgValue) == sizeof(unsigned long long),
+#endif // defined(__CHERI_PURE_CAPABILITY__)
                   "Size of TraceArg value union is not equal to the size of "
                   "the uint field of that union.");
+    // Assert that the size of the union is equal to the size of the as_uint
+    // field since we are assigning to arbitrary types using it.
   };
 
   struct TraceEvent {
@@ -288,11 +310,19 @@ class EventLogger final {
           break;
         case TRACE_VALUE_TYPE_UINT:
           print_length = snprintf(&output[0], kTraceArgBufferLength, "%llu",
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                  (unsigned long long) arg.value.as_uint);
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                   arg.value.as_uint);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
           break;
         case TRACE_VALUE_TYPE_INT:
           print_length = snprintf(&output[0], kTraceArgBufferLength, "%lld",
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                  (long long) arg.value.as_int);
+#else // defined(__CHERI_PURE_CAPABILITY__)
                                   arg.value.as_int);
+#endif // defined(__CHERI_PURE_CAPABILITY__)
           break;
         case TRACE_VALUE_TYPE_DOUBLE:
           print_length = snprintf(&output[0], kTraceArgBufferLength, "%f",
@@ -348,7 +378,11 @@ void InternalAddTraceEvent(char phase,
                            int num_args,
                            const char** arg_names,
                            const unsigned char* arg_types,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                           const uintptr_t* arg_values,
+#else   // !__CHERI_PURE_CAPABILITY__
                            const unsigned long long* arg_values,
+#endif  // !__CHERI_PURE_CAPABILITY__
                            unsigned char flags) {
   // Fast path for when event tracing is inactive.
   if (g_event_logging_active.load() == 0)
