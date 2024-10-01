@@ -736,6 +736,10 @@ union TraceValueUnion {
   double as_double;
   const void* as_pointer;
   const char* as_string;
+#if defined(__CHERI_PURE_CAPABILITY__)
+  intptr_t as_intptr;
+  uintptr_t as_uintptr;
+#endif   // __CHERI_PURE_CAPABILITY__
 };
 
 // Simple container for const char* that should be copied instead of retained.
@@ -751,6 +755,17 @@ class TraceStringWithCopy {
 // Define SetTraceValue for each allowed type. It stores the type and
 // value in the return arguments. This allows this API to avoid declaring any
 // structures so that it is portable to third_party libraries.
+#if defined(__CHERI_PURE_CAPABILITY__)
+#define INTERNAL_DECLARE_SET_TRACE_VALUE(actual_type, union_member,      \
+                                         value_type_id)                  \
+  static inline void SetTraceValue(actual_type arg, unsigned char* type, \
+                                   uintptr_t* value) {                   \
+    TraceValueUnion type_value;                                          \
+    type_value.union_member = arg;                                       \
+    *type = value_type_id;                                               \
+    *value = type_value.as_uintptr;                                      \
+  }
+#else   // !__CHERI_PURE_CAPABILITY__
 #define INTERNAL_DECLARE_SET_TRACE_VALUE(actual_type, union_member,      \
                                          value_type_id)                  \
   static inline void SetTraceValue(actual_type arg, unsigned char* type, \
@@ -760,13 +775,23 @@ class TraceStringWithCopy {
     *type = value_type_id;                                               \
     *value = type_value.as_uint;                                         \
   }
+#endif  // !__CHERI_PURE_CAPABILITY__
 // Simpler form for int types that can be safely casted.
+#if defined(__CHERI_PURE_CAPABILITY__)
+#define INTERNAL_DECLARE_SET_TRACE_VALUE_INT(actual_type, value_type_id) \
+  static inline void SetTraceValue(actual_type arg, unsigned char* type, \
+                                   uintptr_t* value) {                  \
+    *type = value_type_id;                                               \
+    *value = static_cast<unsigned long long>(arg);                       \
+  }
+#else   // !__CHERI_PURE_CAPABILITY__
 #define INTERNAL_DECLARE_SET_TRACE_VALUE_INT(actual_type, value_type_id) \
   static inline void SetTraceValue(actual_type arg, unsigned char* type, \
                                    unsigned long long* value) {          \
     *type = value_type_id;                                               \
     *value = static_cast<unsigned long long>(arg);                       \
   }
+#endif  // !__CHERI_PURE_CAPABILITY__
 
 INTERNAL_DECLARE_SET_TRACE_VALUE_INT(unsigned long long, TRACE_VALUE_TYPE_UINT)
 INTERNAL_DECLARE_SET_TRACE_VALUE_INT(unsigned long, TRACE_VALUE_TYPE_UINT)
@@ -796,7 +821,11 @@ INTERNAL_DECLARE_SET_TRACE_VALUE(const TraceStringWithCopy&,
 // std::string version of SetTraceValue so that trace arguments can be strings.
 static inline void SetTraceValue(const std::string& arg,
                                  unsigned char* type,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                 uintptr_t* value) {
+#else   // !__CHERI_PURE_CAPABILITY__
                                  unsigned long long* value) {
+#endif  // !__CHERI_PURE_CAPABILITY__
   TraceValueUnion type_value;
   type_value.as_string = arg.c_str();
   *type = TRACE_VALUE_TYPE_COPY_STRING;
@@ -829,7 +858,11 @@ static inline void AddTraceEvent(char phase,
                                  const ARG1_TYPE& arg1_val) {
   const int num_args = 1;
   unsigned char arg_types[1];
+#if defined(__CHERI_PURE_CAPABILITY__)
+  uintptr_t arg_values[1];
+#else   // !__CHERI_PURE_CAPABILITY__
   unsigned long long arg_values[1];
+#endif  // !__CHERI_PURE_CAPABILITY__
   SetTraceValue(arg1_val, &arg_types[0], &arg_values[0]);
   TRACE_EVENT_API_ADD_TRACE_EVENT(phase, category_enabled, name, id, num_args,
                                   &arg1_name, arg_types, arg_values, flags);
@@ -848,7 +881,11 @@ static inline void AddTraceEvent(char phase,
   const int num_args = 2;
   const char* arg_names[2] = {arg1_name, arg2_name};
   unsigned char arg_types[2];
+#if defined(__CHERI_PURE_CAPABILITY__)
+  uintptr_t arg_values[2];
+#else   // !__CHERI_PURE_CAPABILITY__
   unsigned long long arg_values[2];
+#endif  // !__CHERI_PURE_CAPABILITY__
   SetTraceValue(arg1_val, &arg_types[0], &arg_values[0]);
   SetTraceValue(arg2_val, &arg_types[1], &arg_values[1]);
   TRACE_EVENT_API_ADD_TRACE_EVENT(phase, category_enabled, name, id, num_args,

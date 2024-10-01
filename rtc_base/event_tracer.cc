@@ -66,7 +66,11 @@ void EventTracer::AddTraceEvent(char phase,
                                 int num_args,
                                 const char** arg_names,
                                 const unsigned char* arg_types,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                                const uintptr_t* arg_values,
+#else   // !__CHERI_PURE_CAPABILITY__
                                 const unsigned long long* arg_values,
+#endif  // !__CHERI_PURE_CAPABILITY__
                                 unsigned char flags) {
   if (g_add_trace_event_ptr) {
     g_add_trace_event_ptr(phase, category_enabled, name, id, num_args,
@@ -94,7 +98,11 @@ class EventLogger final {
                      int num_args,
                      const char** arg_names,
                      const unsigned char* arg_types,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                     const uintptr_t* arg_values,
+#else   // !__CHERI_PURE_CAPABILITY__
                      const unsigned long long* arg_values,
+#endif  // !__CHERI_PURE_CAPABILITY__
                      uint64_t timestamp,
                      int pid,
                      rtc::PlatformThreadId thread_id) {
@@ -103,7 +111,11 @@ class EventLogger final {
       TraceArg& arg = args[i];
       arg.name = arg_names[i];
       arg.type = arg_types[i];
+#if defined(__CHERI_PURE_CAPABILITY__)
+      arg.value.as_uintptr = arg_values[i];
+#else   // !__CHERI_PURE_CAPABILITY__
       arg.value.as_uint = arg_values[i];
+#endif  // !__CHERI_PURE_CAPABILITY__
 
       // Value is a pointer to a temporary string, so we have to make a copy.
       if (arg.type == TRACE_VALUE_TYPE_COPY_STRING) {
@@ -230,16 +242,15 @@ class EventLogger final {
     // Copied from webrtc/rtc_base/trace_event.h TraceValueUnion.
     union TraceArgValue {
       bool as_bool;
-#if defined(__CHERI_PURE_CAPABILITY__)
-      uintptr_t as_uint;
-      intptr_t as_int;
-#else // defined(__CHERI_PURE_CAPABILITY__)
       unsigned long long as_uint;
       long long as_int;
-#endif // defined(__CHERI_PURE_CAPABILITY__)
       double as_double;
       const void* as_pointer;
       const char* as_string;
+#if defined(__CHERI_PURE_CAPABILITY__)
+      intptr_t as_intptr;
+      uintptr_t as_uintptr;
+#endif // defined(__CHERI_PURE_CAPABILITY__)
     } value;
 
     // Assert that the size of the union is equal to the size of the as_uint
@@ -367,7 +378,11 @@ void InternalAddTraceEvent(char phase,
                            int num_args,
                            const char** arg_names,
                            const unsigned char* arg_types,
+#if defined(__CHERI_PURE_CAPABILITY__)
+                           const uintptr_t* arg_values,
+#else   // !__CHERI_PURE_CAPABILITY__
                            const unsigned long long* arg_values,
+#endif  // !__CHERI_PURE_CAPABILITY__
                            unsigned char flags) {
   // Fast path for when event tracing is inactive.
   if (g_event_logging_active.load() == 0)

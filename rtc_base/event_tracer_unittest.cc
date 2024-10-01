@@ -64,7 +64,11 @@ TEST(EventTracerTest, ScopedTraceEvent) {
       [](char /*phase*/, const unsigned char* /*category_enabled*/,
          const char* /*name*/, unsigned long long /*id*/, int /*num_args*/,
          const char** /*arg_names*/, const unsigned char* /*arg_types*/,
+#if defined(__CHERI_PURE_CAPABILITY__)
+         const uintptr_t* /*arg_values*/,
+#else   // !__CHERI_PURE_CAPABILITY__
          const unsigned long long* /*arg_values*/,
+#endif  // !__CHERI_PURE_CAPABILITY__
          unsigned char /*flags*/) { TestStatistics::Get()->Increment(); });
   { TRACE_EVENT0("test", "ScopedTraceEvent"); }
   EXPECT_EQ(2, TestStatistics::Get()->Count());
